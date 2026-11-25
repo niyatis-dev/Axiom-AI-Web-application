@@ -170,12 +170,21 @@ def edit_conversation_message(
             detail="Failed to update conversation history"
         )
 
-    # Generate new AI response using existing chatbot service
-    chat_result = chat(
-        user_id=username,
-        conversation_id=conversation_id,
-        message=clean_content
-    )
+    try:
+        # Generate new AI response using existing chatbot service
+        chat_result = chat(
+            user_id=username,
+            conversation_id=conversation_id,
+            message=clean_content
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Edit Message Error] User '{username}' edit failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to regenerate response: {str(e)}"
+        )
 
     updated_conversation = get_conversation(conversation_id, user_id=username)
 

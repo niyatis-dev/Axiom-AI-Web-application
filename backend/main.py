@@ -25,6 +25,29 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# ── CORS configuration (must be registered before routers) ──────────────
+default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://axiom-ai-web-application.onrender.com",
+]
+
+frontend_env = os.getenv("FRONTEND_URL")
+if frontend_env:
+    for raw in frontend_env.split(","):
+        cleaned = raw.strip().rstrip("/")
+        if cleaned and cleaned not in default_origins:
+            default_origins.append(cleaned)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=default_origins,
+    allow_origin_regex=r"^https://.*(\\.onrender\\.com|\\.vercel\\.app)$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Global exception handler ensuring CORS headers are included even on unhandled errors
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -43,7 +66,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         headers=headers
     )
 
-
+# ── Routers ─────────────────────────────────────────────────────────────
 app.include_router(chat_router)
 app.include_router(settings_router)
 app.include_router(memories_router)
@@ -51,34 +74,8 @@ app.include_router(auth_router)
 app.include_router(documents_router, prefix="/documents")
 
 
-
-
 @app.get("/")
 def home():
-
     return {
         "message": "Backend is running!"
     }
-
-
-default_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://axiom-ai-web-application.onrender.com",
-]
-
-frontend_env = os.getenv("FRONTEND_URL")
-if frontend_env:
-    for raw in frontend_env.split(","):
-        cleaned = raw.strip().rstrip("/")
-        if cleaned and cleaned not in default_origins:
-            default_origins.append(cleaned)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=default_origins,
-    allow_origin_regex=r"^https://.*(\.onrender\.com|\.vercel\.app)$",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
