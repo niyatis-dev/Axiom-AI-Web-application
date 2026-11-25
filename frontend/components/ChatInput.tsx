@@ -1,5 +1,7 @@
-import { Send, Paperclip, X, Loader2 } from "lucide-react";
-import { useRef, useEffect, useState } from "react";
+"use client";
+
+import React, { useRef, useEffect, useState } from "react";
+import { Icon } from "@/components/FigmaIcons";
 import { useChat } from "@/context/ChatContext";
 import { uploadDocumentApi } from "@/lib/api";
 
@@ -12,27 +14,26 @@ interface ChatInputProps {
 export default function ChatInput({
   input,
   setInput,
-  sendMessage
+  sendMessage,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const { activeDocument, setActiveDocument } = useChat();
+  const { activeDocument, setActiveDocument, messages } = useChat();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setIsUploading(true);
     try {
       let base64Content: string | undefined = undefined;
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         const base64Promise = new Promise<string>((resolve) => {
-          reader.onload = (e) => {
-            const result = e.target?.result as string;
-            // Extract the base64 part
-            resolve(result.includes(',') ? result.split(',')[1] : result);
+          reader.onload = (ev) => {
+            const result = ev.target?.result as string;
+            resolve(result.includes(",") ? result.split(",")[1] : result);
           };
         });
         reader.readAsDataURL(file);
@@ -40,10 +41,10 @@ export default function ChatInput({
       }
 
       const result = await uploadDocumentApi(file);
-      setActiveDocument({ 
-        document_id: result.document_id, 
+      setActiveDocument({
+        document_id: result.document_id,
         filename: result.filename,
-        content: base64Content
+        content: base64Content,
       });
     } catch (err: any) {
       alert(err.message || "Failed to upload document");
@@ -56,165 +57,95 @@ export default function ChatInput({
   };
 
   useEffect(() => {
-    if (input === "" && textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = `${Math.min(scrollHeight, 180)}px`;
     }
   }, [input]);
 
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if ((!input.trim() && !activeDocument) || isUploading) return;
+    sendMessage();
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  };
+
   return (
-    <div className="px-3 sm:px-6 md:px-10 pb-3 sm:pb-6 md:pb-8 pt-1.5 sm:pt-2 w-full shrink-0 relative">
-
-      <div className="
-      w-full
-      flex
-      flex-col
-      rounded-2xl
-      border
-      border-border
-      bg-surface-input
-      px-3.5
-      sm:px-6
-      md:px-7
-      py-2.5
-      sm:py-3.5
-      gap-2
-      shadow-lg
-      transition-all
-      duration-300
-      focus-within:border-accent
-      focus-within:bg-surface
-      focus-within:shadow-focus
-      backdrop-blur-xl
-      ">
-        
-        {/* Document Pill inside composer */}
-        {activeDocument && (
-          <div className="flex items-center gap-2 bg-accent-subtle text-accent px-3 py-1.5 rounded-xl w-max max-w-full border border-accent/30 text-sm font-medium">
-            <Paperclip size={14} className="shrink-0" />
-            <span className="truncate max-w-[140px] sm:max-w-[220px]">{activeDocument.filename}</span>
-            <button 
-              type="button"
-              onClick={() => setActiveDocument(null)} 
-              aria-label="Remove document"
-              className="hover:text-text-primary transition-colors ml-1 p-0.5 rounded cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
-        <div className="flex items-end w-full gap-1.5 sm:gap-2">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            aria-label="Attach file"
-            className="
-              w-9
-              h-9
-              sm:w-10
-              sm:h-10
-              flex
-              items-center
-              justify-center
-              rounded-xl
-              text-text-secondary
-              hover:text-text-primary
-              hover:bg-surface-secondary
-              transition-colors
-              duration-200
-              disabled:opacity-50
-              shrink-0
-              cursor-pointer
-            "
-          >
-            {isUploading ? <Loader2 size={17} className="animate-spin" /> : <Paperclip size={17} />}
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileUpload}
-            accept=".pdf,.docx,.txt,.md,.html,.csv,.json,.png,.jpg,.jpeg,.webp"
-          />
+    <div className="composer-area">
+      <div className="composer-width">
+        <form className="composer" onSubmit={handleSubmit}>
+          {activeDocument && (
+            <div className="attachment-chip">
+              <Icon name="attach" size={14} />
+              <span>{activeDocument.filename}</span>
+              <button
+                type="button"
+                aria-label="Remove attachment"
+                onClick={() => setActiveDocument(null)}
+              >
+                <Icon name="close" size={13} />
+              </button>
+            </div>
+          )}
 
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
-            }}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask a question. Explore an idea."
+            rows={1}
+            aria-label="Message Axiom"
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
-                if (input.trim()) {
-                  sendMessage();
-                }
+                handleSubmit();
               }
             }}
-            rows={1}
-            className="
-              flex-1
-              bg-transparent
-              outline-none
-              text-text-primary
-              placeholder:text-text-muted
-              transition-all
-              duration-200
-              focus:placeholder:opacity-50
-              px-1.5
-              sm:px-2
-              py-2
-              sm:py-2.5
-              resize-none
-              overflow-y-auto
-              max-h-[300px]
-              min-h-[36px]
-              sm:min-h-[40px]
-              text-sm
-              leading-relaxed
-              break-words
-              [overflow-wrap:anywhere]
-            "
-            placeholder="Ask Axiom anything..."
           />
 
-          <button
-            type="button"
-            onClick={() => {
-              if (input.trim() && !isUploading) {
-                sendMessage();
-              }
-            }}
-            disabled={!input.trim() || isUploading}
-            aria-label="Send message"
-            className="
-              w-9
-              h-9
-              sm:w-10
-              sm:h-10
-              flex
-              items-center
-              justify-center
-              shrink-0
-              rounded-xl
-              bg-accent
-              hover:bg-accent-hover
-              text-white
-              shadow-elevation
-              transition-all
-              duration-200
-              active:scale-95
-              disabled:opacity-40
-              disabled:cursor-not-allowed
-              disabled:active:scale-100
-              cursor-pointer
-            "
-          >
-            <Send size={15} className="ml-0.5" />
-          </button>
+          <div className="composer-toolbar">
+            <div className="composer-tools">
+              <input
+                ref={fileInputRef}
+                type="file"
+                hidden
+                onChange={handleFileUpload}
+              />
+              <button
+                type="button"
+                className="icon-button attach-button"
+                title="Attach a file"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                <Icon name="attach" size={19} />
+              </button>
+              {isUploading && (
+                <span style={{ fontSize: "12px", color: "var(--muted)", marginLeft: "4px" }}>
+                  Uploading...
+                </span>
+              )}
+            </div>
+
+            <div className="send-tools">
+              <span>↵ to send</span>
+              <button
+                type="submit"
+                className="send-button"
+                aria-label="Send message"
+                disabled={(!input.trim() && !activeDocument) || isUploading}
+              >
+                <Icon name="arrow" size={20} />
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <div className="composer-disclaimer">
+          <span>Axiom can make mistakes. Check important information.</span>
         </div>
       </div>
     </div>

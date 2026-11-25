@@ -1,0 +1,97 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { Icon, Mark, SettingsIcon } from "@/components/FigmaIcons";
+import SettingsModal from "@/components/SettingsModal";
+
+interface AuthLayoutProps {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}
+
+export default function AuthLayout({
+  title,
+  description,
+  children,
+}: AuthLayoutProps) {
+  const [showAppearance, setShowAppearance] = useState(false);
+
+  return (
+    <main className="auth-page">
+      {/* Top Header */}
+      <header className="auth-header">
+        <Link href="/" className="auth-home-link">
+          <Icon name="arrowLeft" size={18} />
+          <span>Your conversations</span>
+        </Link>
+        <button
+          type="button"
+          className="auth-appearance"
+          onClick={() => setShowAppearance(true)}
+        >
+          <SettingsIcon tab="Appearance" />
+          <span>Appearance</span>
+        </button>
+      </header>
+
+      {/* Main Two-Column Split Layout */}
+      <div className="auth-layout">
+        {/* Left Side: Editorial Sculpture Story */}
+        <section className="auth-story">
+          <h1>
+            A world of
+            <br />
+            <span>possibility.</span>
+          </h1>
+          <p>
+            An intelligent workspace for thinking, exploring, and building.
+          </p>
+
+          <div className="sculpture" aria-hidden="true">
+            <div className="sculpture-shadow" />
+            <div className="sculpture-ring ring-a" />
+            <div className="sculpture-ring ring-b" />
+            <div className="sculpture-ring ring-c" />
+            <div className="sculpture-core">
+              <Mark size={36} />
+            </div>
+          </div>
+        </section>
+
+        {/* Right Side: Authentication Form Card */}
+        <section className="auth-form-section">
+          <Link href="/" className="back-to-chat">
+            <Icon name="arrowLeft" size={16} />
+            Back to conversation
+          </Link>
+
+          <div className="auth-form-wrap">
+            <span className="auth-form-icon">
+              <Mark size={32} />
+            </span>
+            <h2>{title}</h2>
+            <p className="auth-description">{description}</p>
+
+            {children}
+          </div>
+        </section>
+      </div>
+
+      {/* Footer */}
+      <footer className="auth-footer">
+        <span>© {new Date().getFullYear()} Axiom</span>
+      </footer>
+
+      {/* Settings Modal (Appearance Tab) */}
+      {showAppearance && (
+        <SettingsModal
+          initialTab="Appearance"
+          open={showAppearance}
+          onClose={() => setShowAppearance(false)}
+        />
+      )}
+    </main>
+  );
+}
