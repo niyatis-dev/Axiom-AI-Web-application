@@ -321,7 +321,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           last_message: response.response,
         }));
       }
-    } catch {
+    } catch (err) {
+      console.error("Chat error:", err);
       setMessages((prev) => {
         const updated = [...prev];
         updated[updated.length - 1] = {

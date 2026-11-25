@@ -42,7 +42,7 @@ client = Groq(
 
 logger = logging.getLogger(__name__)
 
-QWEN_IMAGE_MODEL = "qwen/qwen3.6-27b"
+QWEN_IMAGE_MODEL = "qwen/qwen3.8-27b"
 QWEN_MAX_COMPLETION_TOKENS = 700
 IMAGE_UPSTREAM_ERROR_REPLY = (
     "I'm sorry, I couldn't analyze that image right now. Please try again."
@@ -175,14 +175,13 @@ def _memory_enrichment(user_id: str, user_input: str, memory_enabled: bool, is_i
             return []
         return search_memories(user_id, user_input, memory_category)
 
-    if not is_image_document:
-        return enrich()
     try:
         return enrich()
     except Exception as exc:
         logger.warning(
-            "[Document Agent] optional memory enrichment skipped for image chat: exception_type=%s",
+            "[Memory] optional memory enrichment skipped: exception_type=%s (%s)",
             type(exc).__name__,
+            exc,
         )
         return []
 
@@ -201,7 +200,7 @@ def _is_document_relevant(raw_messages: list) -> bool:
 
     try:
         response = client.chat.completions.create(
-            model="groq/compound-mini",
+            model="openai/gpt-oss-20b",
             temperature=0.0,
             max_tokens=10,
             messages=[
@@ -225,7 +224,7 @@ def _is_document_relevant(raw_messages: list) -> bool:
 def generate_conversation_title(user_input: str) -> str:
     try:
         response = client.chat.completions.create(
-            model="groq/compound-mini",
+            model="openai/gpt-oss-20b",
             temperature=0.5,
             max_tokens=25,
             messages=[
@@ -362,7 +361,7 @@ Rules:
     
     try:
         response = client.chat.completions.create(
-            model="groq/compound-mini",
+            model="openai/gpt-oss-20b",
             temperature=0.0,
             max_tokens=100,
             messages=[
@@ -967,8 +966,12 @@ def chat(user_id: str, conversation_id: str, message: str, timezone: str = None,
             "max_tokens": 700,
             "messages": prompt_messages
         }
-        response = client.chat.completions.create(**completion_kwargs)
-        ai_reply = response.choices[0].message.content
+        try:
+            response = client.chat.completions.create(**completion_kwargs)
+            ai_reply = response.choices[0].message.content
+        except Exception as exc:
+            logger.error(f"[Chatbot] Groq chat completion failed: {exc}", exc_info=True)
+            ai_reply = "I apologize, but I am currently unable to process your request due to an upstream service interruption. Please try again in a moment."
 
         # Preserve existing non-image behavior.
         if not ai_reply:

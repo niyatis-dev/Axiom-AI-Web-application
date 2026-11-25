@@ -1,6 +1,7 @@
 import os
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from backend.routes.chat import router as chat_router
 from backend.routes.settings import router as settings_router
@@ -24,6 +25,24 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Global exception handler ensuring CORS headers are included even on unhandled errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.getLogger(__name__).error(
+        f"Unhandled exception on {request.method} {request.url.path}: {exc}",
+        exc_info=True
+    )
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal server error occurred. Please try again."},
+        headers=headers
+    )
+
 
 app.include_router(chat_router)
 app.include_router(settings_router)
@@ -42,11 +61,23 @@ def home():
     }
 
 
+default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://axiom-ai-web-application.onrender.com",
+]
+
+frontend_env = os.getenv("FRONTEND_URL")
+if frontend_env:
+    for raw in frontend_env.split(","):
+        cleaned = raw.strip().rstrip("/")
+        if cleaned and cleaned not in default_origins:
+            default_origins.append(cleaned)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        os.getenv("FRONTEND_URL", "http://localhost:3000")
-    ],
+    allow_origins=default_origins,
+    allow_origin_regex=r"^https://.*(\.onrender\.com|\.vercel\.app)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
