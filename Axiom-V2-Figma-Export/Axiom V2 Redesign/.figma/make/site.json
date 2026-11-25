@@ -1,0 +1,10 @@
+{
+  "description": "Axiom V2 is an AI assistant for users who want focused conversations, with a refined chat experience and accessible light and dark themes.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
