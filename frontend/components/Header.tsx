@@ -1,33 +1,102 @@
-import { PanelLeft } from "lucide-react";
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import { Icon } from "@/components/FigmaIcons";
+import { useChat } from "@/context/ChatContext";
 
 interface HeaderProps {
-  isSidebarOpen?: boolean;
-  setIsSidebarOpen?: React.Dispatch<React.SetStateAction<boolean>>;
+  collapsed: boolean;
+  setCollapsed: (collapsed: boolean) => void;
+  setSidebar: (open: boolean) => void;
+  onRenameRequest: () => void;
 }
 
-export default function Header({ isSidebarOpen, setIsSidebarOpen }: HeaderProps) {
+export default function Header({
+  collapsed,
+  setCollapsed,
+  setSidebar,
+  onRenameRequest,
+}: HeaderProps) {
+  const { conversationId, selectedConversation, deleteConversation, startNewChat } = useChat();
+  const [moreMenu, setMoreMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMoreMenu(false);
+      }
+    }
+    if (moreMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [moreMenu]);
+
+  const activeTitle = selectedConversation?.title || "New conversation";
+
   return (
-    <header className="px-4 sm:px-6 md:px-10 py-3 sm:py-4 md:py-5 flex items-center justify-between bg-bg-app shrink-0 h-14 sm:h-16 md:h-[76px] border-b border-border">
-      <div className="flex items-center gap-2">
-        {setIsSidebarOpen && (
-          <button
-            type="button"
-            onClick={() => setIsSidebarOpen((prev) => !prev)}
-            aria-label="Toggle sidebar"
-            className="md:hidden flex items-center gap-2 h-10 px-2.5 rounded-xl bg-surface-secondary hover:bg-surface border border-border text-text-primary shadow-elevation transition-all duration-200 cursor-pointer active:scale-95 group"
-            title="Toggle sidebar"
-          >
-            <PanelLeft size={19} className="text-text-primary group-hover:text-accent transition-colors shrink-0" />
-            <img src="/brand/axiom-mark-white.png" alt="Axiom" className="h-5 w-auto object-contain dark-logo group-hover:scale-105 transition-transform" />
-            <img src="/brand/axiom-mark-black.png" alt="Axiom" className="h-5 w-auto object-contain light-logo group-hover:scale-105 transition-transform" />
-          </button>
-        )}
+    <header className="chat-header">
+      <div className="header-location">
+        {/* Single sidebar toggle button */}
+        <button
+          type="button"
+          className="icon-button show-sidebar"
+          title="Open sidebar"
+          onClick={() => {
+            setCollapsed(false);
+            setSidebar(true);
+          }}
+        >
+          <Icon name="panel" />
+        </button>
+
+        <span className="header-title">{activeTitle}</span>
       </div>
 
-      <div className="flex items-center">
-        <img src="/brand/axiom-wordmark-white.png" alt="AXIOM" className="h-4 sm:h-4.5 w-auto object-contain dark-logo" />
-        <img src="/brand/axiom-wordmark-black.png" alt="AXIOM" className="h-4 sm:h-4.5 w-auto object-contain light-logo" />
+      <div className="header-actions">
+        {conversationId && (
+          <div className="more-container" ref={menuRef}>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Conversation options"
+              aria-expanded={moreMenu}
+              onClick={() => setMoreMenu(!moreMenu)}
+            >
+              <Icon name="more" size={20} />
+            </button>
+
+            {moreMenu && (
+              <div className="popover conversation-menu">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreMenu(false);
+                    onRenameRequest();
+                  }}
+                >
+                  <Icon name="edit" size={15} />
+                  Rename conversation
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setMoreMenu(false);
+                    if (conversationId) {
+                      await deleteConversation(conversationId);
+                      await startNewChat();
+                    }
+                  }}
+                >
+                  <Icon name="close" size={15} />
+                  Delete conversation
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );
-}
+}

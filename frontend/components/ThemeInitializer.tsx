@@ -12,30 +12,28 @@ export default function ThemeInitializer() {
       const root = document.documentElement;
       
       // Handle theme
-      if (theme === 'light') {
+      const isLight = theme === 'light' || (theme === 'system' && window.matchMedia?.('(prefers-color-scheme: light)').matches);
+      if (isLight) {
+        root.dataset.theme = 'light';
         root.classList.add('light');
         root.classList.remove('dark');
-      } else if (theme === 'dark') {
+      } else {
+        root.dataset.theme = 'dark';
         root.classList.add('dark');
         root.classList.remove('light');
-      } else if (theme === 'system') {
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-          root.classList.add('light');
-          root.classList.remove('dark');
-        } else {
-          root.classList.add('dark');
-          root.classList.remove('light');
-        }
       }
 
       // Handle accent color
       if (accent_color) {
+        root.style.setProperty('--accent', accent_color);
         root.style.setProperty('--accent-color', accent_color);
       } else {
+        root.style.removeProperty('--accent');
         root.style.removeProperty('--accent-color');
       }
 
       // Handle compact mode
+      root.dataset.compact = String(Boolean(compact_mode));
       if (compact_mode) {
         root.classList.add('compact');
       } else {
@@ -43,6 +41,7 @@ export default function ThemeInitializer() {
       }
 
       // Handle animations
+      root.dataset.motion = String(animations !== false);
       if (animations === false) {
         root.classList.add('no-animations');
       } else {
