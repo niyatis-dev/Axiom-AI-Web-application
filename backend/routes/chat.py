@@ -33,6 +33,10 @@ class NewConversationRequest(BaseModel):
 class RenameConversationRequest(BaseModel):
     title: str
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # -----------------------
 # Chat Endpoint
 # -----------------------
@@ -42,14 +46,23 @@ def chat_endpoint(
     request: ChatRequest,
     username: str = Depends(get_current_username)
 ):
-    result = chat(
-        user_id=username,
-        conversation_id=request.conversation_id,
-        message=request.message,
-        timezone=request.timezone,
-        document_id=request.document_id
-    )
-    return result
+    try:
+        result = chat(
+            user_id=username,
+            conversation_id=request.conversation_id,
+            message=request.message,
+            timezone=request.timezone,
+            document_id=request.document_id
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Chat Endpoint Error] User '{username}' message failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Chat processing failed: {str(e)}"
+        )
 
 # -----------------------
 # Conversation REST Endpoints

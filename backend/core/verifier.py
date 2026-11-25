@@ -64,7 +64,7 @@ Answer ONLY 'yes' or 'no'."""
         
         try:
             response = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model="openai/gpt-oss-20b",
                 temperature=0.0,
                 max_tokens=10,
                 messages=[
@@ -108,7 +108,7 @@ Output NOTHING EXCEPT the plain text query string. No explanations."""
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             temperature=0.0,
             max_tokens=100,
             messages=[

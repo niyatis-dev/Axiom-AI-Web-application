@@ -110,7 +110,7 @@ none
     
     try:
         response = client.chat.completions.create(
-            model="groq/compound-mini",
+            model="openai/gpt-oss-20b",
             temperature=0.0,
             max_tokens=20,
             messages=[
