@@ -3,6 +3,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from backend.core.groq_client import create_groq_client, get_clean_groq_api_key
 from backend.routes.chat import router as chat_router
 from backend.routes.settings import router as settings_router
 from backend.routes.memories import router as memories_router
@@ -42,7 +43,7 @@ if frontend_env:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=default_origins,
-    allow_origin_regex=r"^https://.*(\\.onrender\\.com|\\.vercel\\.app)$",
+    allow_origin_regex=r"^https://.*(\.onrender\.com|\.vercel\.app)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,3 +80,30 @@ def home():
     return {
         "message": "Backend is running!"
     }
+
+
+@app.get("/health")
+def health(check_llm: bool = False):
+    """Non-secret runtime health check for verifying deployment configuration."""
+    api_key = get_clean_groq_api_key()
+    status_info = {
+        "status": "ok",
+        "groq_key_configured": bool(api_key),
+        "groq_key_format_valid": bool(api_key.startswith("gsk_") and len(api_key) > 20),
+    }
+    if check_llm:
+        if not api_key:
+            status_info["llm"] = "error"
+            status_info["llm_error_type"] = "MissingAPIKey"
+            status_info["llm_status_code"] = None
+        else:
+            try:
+                client = create_groq_client()
+                models = client.models.list()
+                status_info["llm"] = "ok"
+                status_info["llm_models_count"] = len(getattr(models, "data", []) or [])
+            except Exception as exc:
+                status_info["llm"] = "error"
+                status_info["llm_error_type"] = type(exc).__name__
+                status_info["llm_status_code"] = getattr(exc, "status_code", None)
+    return status_info

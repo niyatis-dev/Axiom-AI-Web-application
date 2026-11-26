@@ -1,12 +1,8 @@
-import os
 import logging
 import re
-from groq import Groq
-from dotenv import load_dotenv
+from backend.core.groq_client import create_groq_client
 
-load_dotenv()
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = create_groq_client()
 logger = logging.getLogger(__name__)
 
 def detect_tools(user_message, context=None) -> list[str]:

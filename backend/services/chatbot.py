@@ -32,13 +32,12 @@ from backend.agents.datetime_tool import (
 from backend.agents.web_search import search_web
 from backend.core.axiom_personality import AXIOM_PERSONALITY
 from backend.core.document_processor import validate_image_content
+from backend.core.groq_client import create_groq_client
 from backend.core.verifier import verify_tool_result, reformulate_with_feedback
 
 load_dotenv()
 
-client = Groq(
-    api_key=os.getenv("GROQ_API_KEY")
-)
+client = create_groq_client()
 
 logger = logging.getLogger(__name__)
 
@@ -677,10 +676,11 @@ def chat(user_id: str, conversation_id: str, message: str, timezone: str = None,
 
     formatted_history = [
         {
-            "role": m["role"],
-            "content": m["content"]
+            "role": m.get("role", "user"),
+            "content": m.get("content") if isinstance(m.get("content"), str) else str(m.get("content") or "")
         }
         for m in raw_messages[-10:]
+        if m.get("role") in ("user", "assistant", "system")
     ]
 
     prompt_messages.extend(
@@ -966,12 +966,33 @@ def chat(user_id: str, conversation_id: str, message: str, timezone: str = None,
             "max_tokens": 700,
             "messages": prompt_messages
         }
+        ai_reply = None
+        fallback_model = "openai/gpt-oss-20b"
         try:
             response = client.chat.completions.create(**completion_kwargs)
             ai_reply = response.choices[0].message.content
         except Exception as exc:
-            logger.error(f"[Chatbot] Groq chat completion failed: {exc}", exc_info=True)
-            ai_reply = "I apologize, but I am currently unable to process your request due to an upstream service interruption. Please try again in a moment."
+            status_code = getattr(exc, "status_code", None)
+            logger.error(
+                f"[Chatbot] Groq chat completion failed on {model_name} "
+                f"(type={type(exc).__name__}, status={status_code}): {exc}",
+                exc_info=True
+            )
+            if model_name != fallback_model and status_code != 401:
+                try:
+                    logger.info(f"[Chatbot] Retrying chat completion with fallback model {fallback_model}")
+                    fallback_kwargs = {**completion_kwargs, "model": fallback_model}
+                    response = client.chat.completions.create(**fallback_kwargs)
+                    ai_reply = response.choices[0].message.content
+                except Exception as fallback_exc:
+                    logger.error(
+                        f"[Chatbot] Fallback model {fallback_model} also failed "
+                        f"(type={type(fallback_exc).__name__}, status={getattr(fallback_exc, 'status_code', None)}): {fallback_exc}",
+                        exc_info=True
+                    )
+                    ai_reply = "I apologize, but I am currently unable to process your request due to an upstream service interruption. Please try again in a moment."
+            else:
+                ai_reply = "I apologize, but I am currently unable to process your request due to an upstream service interruption. Please try again in a moment."
 
         # Preserve existing non-image behavior.
         if not ai_reply:

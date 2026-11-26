@@ -1,11 +1,7 @@
-import os
 import logging
-from groq import Groq
-from dotenv import load_dotenv
+from backend.core.groq_client import create_groq_client
 
-load_dotenv()
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = create_groq_client()
 logger = logging.getLogger(__name__)
 
 def verify_tool_result(user_input: str, tool: str, query: str, raw_result: dict, context: list = None, is_retry: bool = False) -> dict:
